@@ -1,0 +1,15 @@
+services:
+
+  postgres:
+    image: postgres:latest
+    container_name: PostgresDB
+    ports: 
+      - 5432:5432
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=incidentdb
+    volumes:
+      - postgresdb_data:/var/lib/postgresql
+
+volumes:
+  postgresdb_data:      
