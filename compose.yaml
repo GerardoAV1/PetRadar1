@@ -1,15 +1,75 @@
 services:
-
+  # -----------------------------------------------------------
+  # PostgreSQL con PostGIS habilitado (ST_DWithin, geography...)
+  # -----------------------------------------------------------
   postgres:
-    image: postgres:latest
-    container_name: PostgresDB
-    ports: 
-      - 5432:5432
+    image: postgis/postgis:16-3.4
+    container_name: petradar-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=incidentdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: perdidadb
     volumes:
-      - postgresdb_data:/var/lib/postgresql
+      - postgresdb_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d perdidadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # -----------------------------------------------------------
+  # Redis para cache de endpoints GET
+  # -----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: petradar-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # -----------------------------------------------------------
+  # API NestJS PetRadar
+  # -----------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: petradar-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: perdidadb
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_TTL_MS: 60000
+      APPLICATIONINSIGHTS_CONNECTION_STRING: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+      MAPBOX_TOKEN: ${MAPBOX_TOKEN:-}
+      MAILER_EMAIL: ${MAILER_EMAIL:-}
+      MAILER_PASSWORD: ${MAILER_PASSWORD:-}
+      MAILER_SERVICE: ${MAILER_SERVICE:-gmail}
 
 volumes:
-  postgresdb_data:      
+  postgresdb_data:
+  redis_data:
