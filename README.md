@@ -173,4 +173,4 @@ TypeORM con synchronize=true crea las tablas automaticamente la primera vez
 
 ## Autor
 
-Gerardo Amezquita — Proyecto 2 Parcial, materia Georeferenciados
+Gerardo Amezquita Villalobos — Proyecto 2 Parcial, materia Georeferenciados
