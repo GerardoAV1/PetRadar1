@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
+import { DataSource } from 'typeorm';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -13,18 +14,29 @@ import { FoundPetsModule } from './found-pets/found-pets.module';
   imports: [
     /**
      * TypeORM con PostgreSQL + PostGIS.
-     * autoLoadEntities=true para que cargue LostPet y FoundPet automaticamente.
+     * dataSourceFactory inicializa las extensiones postgis y uuid-ossp
+     * antes de que TypeORM sincronice el esquema (necesario en Railway).
      * synchronize=true SOLO para el examen (crea tablas al arrancar).
      */
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: envs.DB_HOST,
-      port: envs.DB_PORT,
-      database: envs.DB_NAME,
-      username: envs.DB_USER,
-      password: envs.DB_PASSWORD,
-      autoLoadEntities: true,
-      synchronize: true,
+    TypeOrmModule.forRootAsync({
+      useFactory: () => ({
+        type: 'postgres',
+        host: envs.DB_HOST,
+        port: envs.DB_PORT,
+        database: envs.DB_NAME,
+        username: envs.DB_USER,
+        password: envs.DB_PASSWORD,
+        autoLoadEntities: true,
+        synchronize: true,
+        ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      }),
+      dataSourceFactory: async (options) => {
+        const dataSource = new DataSource(options);
+        await dataSource.initialize();
+        await dataSource.query(`CREATE EXTENSION IF NOT EXISTS postgis`);
+        await dataSource.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+        return dataSource;
+      },
     }),
 
     /**
