@@ -32,10 +32,13 @@ import { FoundPetsModule } from './found-pets/found-pets.module';
       }),
       dataSourceFactory: async (options) => {
         if (!options) throw new Error('DataSource options not defined');
-        const dataSource = new DataSource(options);
+        // Conectar sin synchronize para instalar extensiones primero
+        const dataSource = new DataSource({ ...options, synchronize: false });
         await dataSource.initialize();
         await dataSource.query(`CREATE EXTENSION IF NOT EXISTS postgis`);
         await dataSource.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+        // Ahora sincronizar (PostGIS ya disponible)
+        await dataSource.synchronize();
         return dataSource;
       },
     }),
