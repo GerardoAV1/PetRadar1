@@ -31,6 +31,7 @@ import { FoundPetsModule } from './found-pets/found-pets.module';
         ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
       }),
       dataSourceFactory: async (options) => {
+        if (!options) throw new Error('DataSource options not defined');
         const dataSource = new DataSource(options);
         await dataSource.initialize();
         await dataSource.query(`CREATE EXTENSION IF NOT EXISTS postgis`);
